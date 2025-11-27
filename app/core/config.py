@@ -5,6 +5,8 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Kairos API"
     SECRET_KEY: str = ""
+    BASE_URL: str
+    
     # Configuration PostgreSQL par défaut (correspond au docker-compose)
     POSTGRES_SERVER: str = "db"
     POSTGRES_USER: str = "kairos_admin"

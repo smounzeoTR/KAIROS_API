@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Request, Depends, HTTPException
+from starlette.responses import RedirectResponse
 from authlib.integrations.starlette_client import OAuth
 from sqlmodel import Session, select
 from app.core.config import settings
@@ -22,7 +23,8 @@ oauth.register(
 
 @router.get("/login")
 async def login(request: Request):
-    redirect_uri = request.url_for('auth_callback')
+    #redirect_uri = request.url_for('auth_callback')
+    redirect_uri = f"{settings.BASE_URL}/api/v1/auth/callback"
     # access_type=offline est CRUCIAL pour obtenir le Refresh Token (accès en arrière-plan)
     return await oauth.google.authorize_redirect(request, redirect_uri, access_type='offline', prompt='consent')
 
@@ -78,17 +80,11 @@ async def auth_callback(request: Request, db: Session = Depends(get_db)):
         # 5. Création du Token de Session (JWT) pour l'App Mobile
         access_token = create_access_token(subject=user.id)
 
-        # On retourne le token que l'app mobile devra stocker
-        return {
-            "access_token": access_token,
-            "token_type": "bearer",
-            "user": {
-                "id": user.id,
-                "email": user.email,
-                "name": user.full_name
-            }
-        }
+        # On passe le token en paramètre d'URL
+        mobile_redirect_url = f"kairos://callback?token={access_token}"
+        
+        return RedirectResponse(url=mobile_redirect_url)
 
     except Exception as e:
-        # En dev, on affiche l'erreur brute pour comprendre
-        return {"error": str(e), "details": "Erreur lors du callback Google"}
+        # En cas d'erreur, on redirige vers l'app avec un message d'erreur
+        return RedirectResponse(url=f"kairos://callback?error={str(e)}")
