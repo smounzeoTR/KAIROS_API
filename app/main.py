@@ -1,17 +1,36 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlmodel import SQLModel
 
-# Titre et description pour la documentation automatique (Swagger UI)
+from app.core.config import settings
+from app.db.session import engine
+
+# IMPORTANT : On doit importer les modèles ici pour que SQLModel les "voie"
+# et puisse créer les tables au démarrage.
+from app.models.user import User 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Fonction exécutée au démarrage (avant le yield) 
+    et à l'arrêt (après le yield) de l'application.
+    """
+    print("🚀 Démarrage de Kairos API...")
+    print("🛠️ Vérification des tables de base de données...")
+    SQLModel.metadata.create_all(engine)
+    print("✅ Tables synchronisées.")
+    yield
+    print("🛑 Arrêt de Kairos API.")
+
 app = FastAPI(
-    title="Kairos API",
-    description="Backend intelligent pour l'assistant Kairos (FastAPI + LangChain)",
-    version="1.0.0",
-    docs_url="/docs", # L'URL pour tester l'API
+    title=settings.PROJECT_NAME,
+    lifespan=lifespan,
+    docs_url="/docs",
     redoc_url="/redoc",
 )
 
-# Configuration CORS (Crucial pour que l'app mobile Flutter puisse parler à l'API)
-# En prod, remplacez "*" par le domaine réel de votre app.
+# Configuration CORS
 origins = ["*"]
 
 app.add_middleware(
@@ -24,15 +43,8 @@ app.add_middleware(
 
 @app.get("/")
 def read_root():
-    """Route de santé pour vérifier que l'API tourne."""
-    return {
-        "status": "online", 
-        "service": "Kairos API", 
-        "version": "1.0.0",
-        "message": "Welcome to the Matrix of Productivity 🚀"
-    }
+    return {"status": "online", "message": "Kairos API is running with DB connection 🚀"}
 
 @app.get("/health")
 def health_check():
-    """Utilisé par Docker/Kubernetes pour savoir si le container est vivant."""
     return {"status": "ok"}
