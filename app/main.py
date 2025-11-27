@@ -14,7 +14,7 @@ from app.models.user import User
 from app.api.v1.endpoints import auth
 from app.models.oauth import OAuthCredential
 from app.api.v1.endpoints import calendar
-
+from app.api.v1.endpoints import optimizer
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -52,7 +52,8 @@ app.add_middleware(
 
 # Inclusion des routes
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
-app.include_router(calendar.router, prefix="/api/v1/calendar", tags=["Calendar"]) 
+app.include_router(calendar.router, prefix="/api/v1/calendar", tags=["Calendar"])
+app.include_router(optimizer.router, prefix="/api/v1/ai", tags=["AI Optimization"]) 
 @app.get("/")
 def read_root():
     return {"status": "online", "message": "Kairos API is running with DB connection 🚀"}

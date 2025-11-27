@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     # Google OAuth
     GOOGLE_CLIENT_ID: Optional[str] = None
     GOOGLE_CLIENT_SECRET: Optional[str] = None
+    # Gemini key
+    GOOGLE_API_KEY: str
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod

@@ -7,3 +7,5 @@ app/__pycache__/
 /app/api/__pycache__
 /app/services/__pycache__
 .env
+/app/schemas/__pycache__
+/app/services/ai_engine/__pycache__
