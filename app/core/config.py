@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Kairos API"
-    
+    SECRET_KEY: str = ""
     # Configuration PostgreSQL par défaut (correspond au docker-compose)
     POSTGRES_SERVER: str = "db"
     POSTGRES_USER: str = "kairos_admin"
@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     
     # URL de connexion complète (sera construite automatiquement)
     DATABASE_URL: Optional[str] = None
+
+    # Google OAuth
+    GOOGLE_CLIENT_ID: Optional[str] = None
+    GOOGLE_CLIENT_SECRET: Optional[str] = None
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
@@ -31,5 +35,6 @@ class Settings(BaseSettings):
 
     class Config:
         case_sensitive = True
+        env_file = ".env"
 
 settings = Settings()

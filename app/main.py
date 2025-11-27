@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from sqlmodel import SQLModel
 
 from app.core.config import settings
@@ -9,6 +10,8 @@ from app.db.session import engine
 # IMPORTANT : On doit importer les modèles ici pour que SQLModel les "voie"
 # et puisse créer les tables au démarrage.
 from app.models.user import User 
+
+from app.api.v1.endpoints import auth
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -30,6 +33,9 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+# Middleware Session (Obligatoire pour Authlib)
+app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
+
 # Configuration CORS
 origins = ["*"]
 
@@ -40,6 +46,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Inclusion des routes
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 
 @app.get("/")
 def read_root():
