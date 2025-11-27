@@ -12,6 +12,7 @@ from app.db.session import engine
 from app.models.user import User 
 
 from app.api.v1.endpoints import auth
+from app.models.oauth import OAuthCredential
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
