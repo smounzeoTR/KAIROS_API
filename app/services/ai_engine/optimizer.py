@@ -2,35 +2,24 @@ import json
 from datetime import datetime
 from typing import List
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.prompts import PromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
-from pydantic.v1 import BaseModel, Field
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import PydanticOutputParser
 from app.core.config import settings
-from app.schemas.ai import ScheduledItem, TaskRequest
+from app.schemas.ai import ScheduledItem, TaskRequest, OptimizedSchedule
 
-class ScheduledItem(BaseModel):
-    title: str = Field(description="Titre de l'activité")
-    start: str = Field(description="Heure de début ISO 8601")
-    end: str = Field(description="Heure de fin ISO 8601")
-    type: str = Field(description="'event' pour RDV fixe, 'task' pour tâche flexible")
-    reasoning: str = Field(description="Pourquoi l'IA a placé ça ici")
-
-class OptimizedSchedule(BaseModel):
-    schedule: List[ScheduledItem]
-
-    
 class AIOptimizer:
     def __init__(self):
         # Initialisation de Gemini Pro
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-pro",
+            model="gemini-2.5-flash",
             google_api_key=settings.GOOGLE_API_KEY,
             temperature=0.1, # Faible température = plus rigoureux/logique
-            convert_system_message_to_human=True
+            convert_system_message_to_human=True,
+            transport="rest"
         )
         
         # Le Parser force Gemini à répondre en JSON strict compatible avec notre Schema
-        self.parser = JsonOutputParser(pydantic_object=ScheduledItem)
+        self.parser = PydanticOutputParser(pydantic_object=OptimizedSchedule)
 
     async def optimize_schedule(self, current_events: List[dict], tasks_todo: List[TaskRequest]):
         
@@ -59,9 +48,9 @@ class AIOptimizer:
         5. Ajoute une petite explication courte dans le champ "reasoning" pour chaque tâche ajoutée (ex: "Inséré après le déjeuner").
 
         FORMAT DE SORTIE ATTENDU :
-        Tu dois répondre UNIQUEMENT avec une liste JSON d'objets. 
-        Chaque objet doit avoir : title, start (ISO8601), end (ISO8601), type ("event" ou "task"), reasoning.
-        Inclue les événements originaux ET les nouvelles tâches dans la liste finale.
+        Tu dois répondre UNIQUEMENT avec un objet JSON. Cet objet doit contenir une clé "schedule" qui est une liste d'objets.
+        Chaque objet dans la liste "schedule" doit avoir : title, start (ISO8601), end (ISO8601), type ("event" ou "task"), reasoning.
+        Inclue les événements originaux ET les nouvelles tâches dans la liste "schedule" finale.
         
         {format_instructions}
         """
@@ -77,18 +66,19 @@ class AIOptimizer:
 
         # Exécution
         try:
+            print("🧠 IA : Préparation des données...")
+            
+            # On convertit simplement les listes de dictionnaires en texte JSON string
+            events_str = json.dumps(current_events, default=str)
+            tasks_str = json.dumps(tasks_todo, default=str)
             print("🧠 IA : Réflexion en cours...")
             result = await chain.ainvoke({
                 "now": now,
-                "events": json.dumps(current_events, default=str), # On convertit les objets en string
-                "tasks": [t.dict() for t in tasks_todo]
+                "events": events_str, #json.dumps(current_events, default=str), # On convertit les objets en string
+                "tasks": tasks_str #[t.dict() for t in tasks_todo]
             })
             
-            # Parfois Gemini renvoie un dict avec une clé "tasks" au lieu d'une liste directe
-            if isinstance(result, dict):
-                # On essaie de trouver la liste dedans
-                return result.get('schedule') or result.get('items') or result.get('tasks') or []
-            return result
+            return result.schedule
 
         except Exception as e:
             print(f"❌ Erreur IA : {str(e)}")

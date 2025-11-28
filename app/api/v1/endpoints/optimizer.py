@@ -7,7 +7,7 @@ from app.db.session import get_db
 from app.models.user import User
 from app.services.calendar_service import calendar_service
 from app.services.ai_engine.optimizer import ai_optimizer
-from app.schemas.ai import OptimizationRequest, TaskRequest
+from app.schemas.ai import OptimizationRequest
 
 router = APIRouter()
 
@@ -17,6 +17,7 @@ async def optimize_day(
     db: Session = Depends(get_db),
     current_user: User = Depends(deps.get_current_user)
 ):
+    print(f"📥 Reçu de Flutter: {len(request.tasks)} tâches à optimiser")
     """
     Endpoint Magique : Reçoit des tâches -> Lit le Calendrier -> Renvoie le planning parfait.
     """
@@ -28,11 +29,13 @@ async def optimize_day(
         google_events = [] # Si pas de Google, on optimise sur une page blanche
 
     # 2. Lancer l'IA
+    tasks_for_ai = [t.dict() for t in request.tasks]
     # Note: En production, cela devrait être une tâche d'arrière-plan (Celery)
     # car Gemini peut prendre 5 à 10 secondes. Pour le MVP, on attend.
     optimized_schedule = await ai_optimizer.optimize_schedule(
         current_events=google_events, 
-        tasks_todo=request.tasks
+        #tasks_todo=request.tasks
+        tasks_todo=tasks_for_ai
     )
 
     return optimized_schedule

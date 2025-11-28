@@ -4,8 +4,8 @@ from pydantic import BaseModel
 # Ce que le mobile envoie pour demander une optimisation
 class TaskRequest(BaseModel):
     title: str
-    duration_minutes: int
-    priority: str = "medium" # low, medium, high
+    duration: int
+    priority: int # 1=low, 2=medium, 3=high
 
 class OptimizationRequest(BaseModel):
     tasks: List[TaskRequest]
@@ -17,3 +17,7 @@ class ScheduledItem(BaseModel):
     end: str    # ISO 8601
     type: str   # "event" (Google) ou "task" (IA)
     reasoning: Optional[str] = None # Pourquoi l'IA a mis ça là
+
+# Le modèle qui encapsule la liste de sortie de l'IA
+class OptimizedSchedule(BaseModel):
+    schedule: List[ScheduledItem]
