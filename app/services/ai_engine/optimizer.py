@@ -26,37 +26,39 @@ class AIOptimizer:
         # --- LOGIQUE DYNAMIQUE ---
         try:
             # On essaie d'utiliser le fuseau envoyé par le mobile
-            print("Zone Info = {user_timezone}")
+            print(f"Zone Info = {user_timezone}")
             user_tz = ZoneInfo(user_timezone)
         except Exception:
-            # Si le téléphone envoie n'importe quoi, on fallback sur UTC
             print(f"⚠️ Fuseau inconnu '{user_timezone}', fallback sur UTC")
             user_tz = ZoneInfo("UTC")
 
-        # On prépare le contexte temporel
-        now = datetime.now().isoformat()
-        # On calcule 'Maintenant' pour CET utilisateur spécifique
-        now_local = datetime.now(user_tz)
-        now_str = now_local.strftime("%Y-%m-%d %H:%M")
+        # On calcule 'Maintenant' pour CET utilisateur spécifique et on le formate en ISO 8601
+        # Ce format (ex: 2024-07-23T21:00:00+02:00) est non-ambigu et contient le fuseau horaire.
+        now_local = datetime.now(user_tz).isoformat()
         
         # LE PROMPT (L'instruction magique)
         template = """
         Tu es un assistant expert (ton nom est KAIROS) en gestion du temps (Time Management).
         Ton objectif est d'insérer une liste de tâches dans un agenda existant sans créer de conflits.
 
-        CONTEXTE ACTUEL :
-        HEURE ACTUELLE : {now} (Ne planifie RIEN avant cette heure précise pour aujourd'hui).
+        CONTEXTE TEMPOREL :
+        - Fuseau horaire de l'utilisateur : {timezone}
+        - Heure actuelle de l'utilisateur : {now} (Ne planifie RIEN avant cette heure précise pour aujourd'hui).
 
         DONNÉES D'ENTRÉE :
-        1. Agenda existant (FIXE) : {events}
+        1. Agenda existant (ÉVÉNEMENTS FIXES) : {events}
         2. Tâches à insérer (FLEXIBLES) : {tasks}
         
         RÈGLES D'OR :
         1. CRITIQUE : Aucune tâche ne doit commencer dans le passé (avant l'heure actuelle).
-        2. Si une tâche a un 'preferred_time' :
-           - Essaie de la placer à cette heure-là ou juste après.
-           - Si l'heure est déjà passée aujourd'hui, planifie-la pour DEMAIN à cette heure.
-        3. Si pas de 'preferred_time', trouve le meilleur trou libre.
+        2. RÈGLE IMPÉRATIVE POUR 'preferred_time' :
+           Si une tâche a une heure préférée (ex: "14:00") :
+           - CAS A : Le créneau de 14:00 est LIBRE ? -> Tu DOIS planifier la tâche à 14:00:00 précises. Pas 14:05, pas 13:55.
+           - NOTE IMPORTANTE : La valeur de 'preferred_time' est une heure locale dans le fuseau de l'utilisateur ({timezone}). Ne la traite PAS comme de l'UTC.
+           - CAS B : Le créneau est DÉJÀ PRIS par un événement ? -> Alors, et seulement alors, cherche le prochain créneau libre juste après.
+           - CAS C : L'heure préférée est DÉJÀ PASSÉE par rapport à l'heure actuelle ({now}) ? -> Planifie-la au prochain créneau disponible.
+        3. Tâches sans heure préférée :
+           - Insère-les intelligemment dans les créneaux libres restants.
         4. Les événements 'google' sont fixes.
 
         RÈGLES STRICTES :
@@ -76,7 +78,7 @@ class AIOptimizer:
 
         prompt = PromptTemplate(
             template=template,
-            input_variables=["now", "events", "tasks"],
+            input_variables=["now", "events", "tasks", "timezone"],
             partial_variables={"format_instructions": self.parser.get_format_instructions()}
         )
 
@@ -92,12 +94,12 @@ class AIOptimizer:
             tasks_str = json.dumps(tasks_todo, default=str)
             print("🧠 IA : Réflexion en cours...")
             result = await chain.ainvoke({
-                "now": now_str,
+                "now": now_local,
                 "timezone": user_timezone,
                 "events": events_str, #json.dumps(current_events, default=str), # On convertit les objets en string
                 "tasks": tasks_str #[t.dict() for t in tasks_todo]
             })
-            
+            print (f"Résultat : {result}")
             return result.schedule
 
         except Exception as e:
