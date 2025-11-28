@@ -35,7 +35,8 @@ async def optimize_day(
     optimized_schedule = await ai_optimizer.optimize_schedule(
         current_events=google_events, 
         #tasks_todo=request.tasks
-        tasks_todo=tasks_for_ai
+        tasks_todo=tasks_for_ai,
+        user_timezone=request.user_timezone
     )
 
     return optimized_schedule

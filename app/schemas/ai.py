@@ -6,9 +6,11 @@ class TaskRequest(BaseModel):
     title: str
     duration: int
     priority: int # 1=low, 2=medium, 3=high
+    preferred_time: Optional[str] = None
 
 class OptimizationRequest(BaseModel):
     tasks: List[TaskRequest]
+    user_timezone: str = "UTC"
 
 # Ce que l'IA renvoie (un créneau planifié)
 class ScheduledItem(BaseModel):

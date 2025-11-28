@@ -65,5 +65,34 @@ class GoogleCalendarService:
             
         return clean_events
 
+    async def create_event(self, user_id: UUID, task: dict, db: Session):
+        """Crée un événement unique dans Google Calendar"""
+        # 1. Récup token (copier la logique de get_upcoming_events ou factoriser)
+        statement = select(OAuthCredential).where(
+            OAuthCredential.user_id == user_id,
+            OAuthCredential.provider == "google"
+        )
+        cred = db.exec(statement).first()
+        if not cred: return None # Ou lever erreur
+
+        url = "https://www.googleapis.com/calendar/v3/calendars/primary/events"
+        headers = {"Authorization": f"Bearer {cred.access_token}"}
+        
+        # 2. Corps de la requête Google
+        body = {
+            "summary": f"⚡ {task['title']}", # On ajoute un emoji pour distinguer les tâches Kairos
+            "description": f"Planifié par Kairos AI.\nRaisonnement: {task.get('reasoning', '')}",
+            "start": {"dateTime": task['start'], "timeZone": "Europe/Paris"}, # Adapter TZ si besoin
+            "end": {"dateTime": task['end'], "timeZone": "Europe/Paris"}
+        }
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(url, json=body, headers=headers)
+            if resp.status_code == 200:
+                print(f"✅ Créé dans Google: {task['title']}")
+                return resp.json()
+            else:
+                print(f"❌ Erreur Création Google: {resp.text}")
+                return None
 # Instance unique du service
 calendar_service = GoogleCalendarService()

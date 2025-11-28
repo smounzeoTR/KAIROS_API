@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from typing import List
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import PromptTemplate
@@ -21,24 +22,42 @@ class AIOptimizer:
         # Le Parser force Gemini à répondre en JSON strict compatible avec notre Schema
         self.parser = PydanticOutputParser(pydantic_object=OptimizedSchedule)
 
-    async def optimize_schedule(self, current_events: List[dict], tasks_todo: List[TaskRequest]):
-        
+    async def optimize_schedule(self, current_events: List[dict], tasks_todo: List[TaskRequest], user_timezone: str = "UTC"):
+        # --- LOGIQUE DYNAMIQUE ---
+        try:
+            # On essaie d'utiliser le fuseau envoyé par le mobile
+            print("Zone Info = {user_timezone}")
+            user_tz = ZoneInfo(user_timezone)
+        except Exception:
+            # Si le téléphone envoie n'importe quoi, on fallback sur UTC
+            print(f"⚠️ Fuseau inconnu '{user_timezone}', fallback sur UTC")
+            user_tz = ZoneInfo("UTC")
+
         # On prépare le contexte temporel
         now = datetime.now().isoformat()
+        # On calcule 'Maintenant' pour CET utilisateur spécifique
+        now_local = datetime.now(user_tz)
+        now_str = now_local.strftime("%Y-%m-%d %H:%M")
         
         # LE PROMPT (L'instruction magique)
         template = """
-        Tu es un assistant expert en gestion du temps (Time Management).
+        Tu es un assistant expert (ton nom est KAIROS) en gestion du temps (Time Management).
         Ton objectif est d'insérer une liste de tâches dans un agenda existant sans créer de conflits.
 
         CONTEXTE ACTUEL :
-        - Nous sommes le : {now}
-        - Voici les événements FIXES (Google Calendar) qu'il ne faut SURTOUT PAS bouger :
-        {events}
+        HEURE ACTUELLE : {now} (Ne planifie RIEN avant cette heure précise pour aujourd'hui).
 
-        TÂCHES À PLANIFIER :
-        Voici les tâches que l'utilisateur veut faire, avec leur durée estimée :
-        {tasks}
+        DONNÉES D'ENTRÉE :
+        1. Agenda existant (FIXE) : {events}
+        2. Tâches à insérer (FLEXIBLES) : {tasks}
+        
+        RÈGLES D'OR :
+        1. CRITIQUE : Aucune tâche ne doit commencer dans le passé (avant l'heure actuelle).
+        2. Si une tâche a un 'preferred_time' :
+           - Essaie de la placer à cette heure-là ou juste après.
+           - Si l'heure est déjà passée aujourd'hui, planifie-la pour DEMAIN à cette heure.
+        3. Si pas de 'preferred_time', trouve le meilleur trou libre.
+        4. Les événements 'google' sont fixes.
 
         RÈGLES STRICTES :
         1. Ne modifie jamais l'heure des événements fixes.
@@ -73,7 +92,8 @@ class AIOptimizer:
             tasks_str = json.dumps(tasks_todo, default=str)
             print("🧠 IA : Réflexion en cours...")
             result = await chain.ainvoke({
-                "now": now,
+                "now": now_str,
+                "timezone": user_timezone,
                 "events": events_str, #json.dumps(current_events, default=str), # On convertit les objets en string
                 "tasks": tasks_str #[t.dict() for t in tasks_todo]
             })
