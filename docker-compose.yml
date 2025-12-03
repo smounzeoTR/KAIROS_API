@@ -6,29 +6,30 @@ services:
     restart: always
     environment:
       - POSTGRES_USER=kairos_admin
-      - POSTGRES_PASSWORD=kairos_secure_pass
+      - POSTGRES_PASSWORD=Malakaye1210
       - POSTGRES_DB=kairos_db
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
   api:
     build: .
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+    container_name: kairos_api
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4 --proxy-headers --forwarded-allow-ips '*'
+    restart: always
     volumes:
       - .:/app
     ports:
-      - "8000:8000"
+      - "127.0.0.1:9004:8000"
     environment:
-      - DATABASE_URL=postgresql://kairos_admin:kairos_secure_pass@db:5432/kairos_db
+      - POSTGRES_SERVER=db
+      - POSTGRES_USER=kairos_admin
+      - POSTGRES_PASSWORD=Malakaye1210
+      - POSTGRES_DB=kairos_db
     depends_on:
       - db
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
 
 volumes:
   postgres_data:
