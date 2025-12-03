@@ -7,6 +7,8 @@ from app.db.session import get_db
 from app.models.user import User
 from app.services.calendar_service import calendar_service
 from app.schemas.ai import ScheduledItem
+from typing import List
+from app.schemas.ai import ScheduledItem
 
 router = APIRouter()
 
@@ -37,3 +39,19 @@ async def sync_calendar(
             count += 1
     
     return {"status": "success", "created": count}
+
+@router.post("/sync")
+async def sync_calendar(
+    tasks: List[ScheduledItem], 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_user)
+):
+    count = 0
+    for item in tasks:
+        # On ne crée QUE les tâches générées par l'IA (type='task')
+        # On ignore les événements 'event' qui existent déjà chez Google
+        if item.type == 'task':
+            await calendar_service.create_event(current_user.id, item.dict(), db)
+            count += 1
+            
+    return {"created": count}
