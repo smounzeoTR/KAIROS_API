@@ -23,6 +23,20 @@ def optimize_schedule_task(google_events: list, tasks_todo: list, user_timezone:
             tasks_todo=tasks_todo,
             user_timezone=user_timezone
         ))
+
+        if isinstance(result, list):
+            # Check if items are Pydantic models before calling .dict()
+            # (LangChain sometimes returns dicts directly, sometimes objects)
+            serializable_result = []
+            for item in result:
+                if hasattr(item, 'dict'):
+                    serializable_result.append(item.dict())
+                else:
+                    serializable_result.append(item)
+            
+            print("✅ WORKER: Terminé! Données sous format JSON.")
+            return serializable_result
+        
         print("✅ WORKER: Terminé !")
         return result
     except Exception as e:

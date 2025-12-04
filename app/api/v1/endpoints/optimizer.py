@@ -1,18 +1,18 @@
 from typing import List
 from fastapi import APIRouter, Depends, Body
+from celery.result import AsyncResult
 from sqlmodel import Session
 
 from app.api import deps
 from app.db.session import get_db
 from app.models.user import User
 from app.services.calendar_service import calendar_service
-from app.services.ai_engine.optimizer import ai_optimizer
 from app.schemas.ai import OptimizationRequest
 from app.workers.ai_task import optimize_schedule_task
 
 router = APIRouter()
 
-@router.post("/optimize")
+@router.post("/optimize/start")
 async def optimize_day(
     request: OptimizationRequest,
     db: Session = Depends(get_db),
