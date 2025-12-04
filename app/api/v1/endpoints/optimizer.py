@@ -40,3 +40,17 @@ async def optimize_day(
 
     # On retourne juste l'ID du ticket
     return {"task_id": task.id, "status": "processing"}
+
+# 2. Endpoint pour VÉRIFIER le statut
+@router.get("/optimize/status/{task_id}")
+async def get_optimization_status(task_id: str):
+    task_result = AsyncResult(task_id)
+    
+    if task_result.state == 'PENDING':
+        return {"status": "processing"}
+    elif task_result.state == 'SUCCESS':
+        return {"status": "completed", "result": task_result.result}
+    elif task_result.state == 'FAILURE':
+        return {"status": "failed", "error": str(task_result.result)}
+    
+    return {"status": task_result.state}
