@@ -9,3 +9,4 @@ app/__pycache__/
 .env
 /app/schemas/__pycache__
 /app/services/ai_engine/__pycache__
+/app/workers/__pycache__

@@ -31,5 +31,17 @@ services:
   redis:
     image: redis:7-alpine
 
+  worker:
+    build: .
+    command: celery -A app.core.celery_app worker --loglevel=info
+    volumes:
+      - .:/app
+    environment:
+      - DATABASE_URL=postgresql://kairos_admin:kairos_secure_pass@db:5432/kairos_db
+      - REDIS_URL=redis://redis:6379/0
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+    depends_on:
+      - redis
+      - db
 volumes:
   postgres_data:

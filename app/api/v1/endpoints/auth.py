@@ -7,6 +7,7 @@ from app.db.session import get_db
 from app.models.user import User
 from app.models.oauth import OAuthCredential
 from app.core.security import create_access_token
+from urllib.parse import quote
 
 router = APIRouter()
 
@@ -79,9 +80,10 @@ async def auth_callback(request: Request, db: Session = Depends(get_db)):
 
         # 5. Création du Token de Session (JWT) pour l'App Mobile
         access_token = create_access_token(subject=user.id)
+        safe_name = quote(user.full_name)
 
         # On passe le token en paramètre d'URL
-        mobile_redirect_url = f"kairos://callback?token={access_token}"
+        mobile_redirect_url = f"kairos://callback?token={access_token}&name={safe_name}"
         
         return RedirectResponse(url=mobile_redirect_url)
 
