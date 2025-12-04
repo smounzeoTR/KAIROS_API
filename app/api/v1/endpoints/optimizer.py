@@ -8,6 +8,7 @@ from app.models.user import User
 from app.services.calendar_service import calendar_service
 from app.services.ai_engine.optimizer import ai_optimizer
 from app.schemas.ai import OptimizationRequest
+from app.workers.ai_task import optimize_schedule_task
 
 router = APIRouter()
 
@@ -31,12 +32,11 @@ async def optimize_day(
     # 2. Lancer l'IA
     tasks_for_ai = [t.dict() for t in request.tasks]
     # Note: En production, cela devrait être une tâche d'arrière-plan (Celery)
-    # car Gemini peut prendre 5 à 10 secondes. Pour le MVP, on attend.
-    optimized_schedule = await ai_optimizer.optimize_schedule(
-        current_events=google_events, 
-        #tasks_todo=request.tasks
+    task = optimize_schedule_task.delay(
+        google_events=google_events,
         tasks_todo=tasks_for_ai,
         user_timezone=request.user_timezone
     )
 
-    return optimized_schedule
+    # On retourne juste l'ID du ticket
+    return {"task_id": task.id, "status": "processing"}
