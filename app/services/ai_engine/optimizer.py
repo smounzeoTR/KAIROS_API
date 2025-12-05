@@ -86,25 +86,19 @@ class AIOptimizer:
         chain = prompt | self.llm | self.parser
 
         # Exécution
-        try:
-            print("🧠 IA : Préparation des données...")
-            
-            # On convertit simplement les listes de dictionnaires en texte JSON string
-            events_str = json.dumps(current_events, default=str)
-            tasks_str = json.dumps(tasks_todo, default=str)
-            print("🧠 IA : Réflexion en cours...")
-            result = await chain.ainvoke({
-                "now": now_local,
-                "timezone": user_timezone,
-                "events": events_str, #json.dumps(current_events, default=str), # On convertit les objets en string
-                "tasks": tasks_str #[t.dict() for t in tasks_todo]
-            })
-            print (f"Résultat : {result}")
-            return result.schedule
-
-        except Exception as e:
-            print(f"❌ Erreur IA : {str(e)}")
-            # En cas d'erreur, on renvoie juste l'agenda original sans modif
-            return current_events
+        print("🧠 IA : Préparation des données...")
+        
+        # On convertit simplement les listes de dictionnaires en texte JSON string
+        events_str = json.dumps(current_events, default=str)
+        tasks_str = json.dumps(tasks_todo, default=str)
+        print("🧠 IA : Réflexion en cours...")
+        result = await chain.ainvoke({
+            "now": now_local,
+            "timezone": user_timezone,
+            "events": events_str,
+            "tasks": tasks_str
+        })
+        print (f"✅ IA : Résultat reçu de Gemini.")
+        return result.schedule
 
 ai_optimizer = AIOptimizer()
