@@ -10,20 +10,10 @@ from app.schemas.ai import ScheduledItem, TaskRequest, OptimizedSchedule
 
 class AIOptimizer:
     def __init__(self):
-        # Initialisation de Gemini Pro
-        self.llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
-            google_api_key=settings.GOOGLE_API_KEY,
-            temperature=0.1, # Faible température = plus rigoureux/logique
-            convert_system_message_to_human=True,
-            transport="rest"
-        )
-        
-        # Le Parser force Gemini à répondre en JSON strict compatible avec notre Schema
-        self.parser = PydanticOutputParser(pydantic_object=OptimizedSchedule)
+        # On ne fait plus d'initialisation coûteuse ou asynchrone ici.
+        pass
 
     async def optimize_schedule(self, current_events: List[dict], tasks_todo: List[TaskRequest], user_timezone: str = "UTC"):
-        # --- LOGIQUE DYNAMIQUE ---
         try:
             # On essaie d'utiliser le fuseau envoyé par le mobile
             print(f"Zone Info = {user_timezone}")
@@ -31,11 +21,22 @@ class AIOptimizer:
         except Exception:
             print(f"⚠️ Fuseau inconnu '{user_timezone}', fallback sur UTC")
             user_tz = ZoneInfo("UTC")
-
-        # On calcule 'Maintenant' pour CET utilisateur spécifique et on le formate en ISO 8601
-        # Ce format (ex: 2024-07-23T21:00:00+02:00) est non-ambigu et contient le fuseau horaire.
+            
         now_local = datetime.now(user_tz).isoformat()
         
+        # --- Initialisation "Lazy" du client et du parser ---
+        # On initialise le client LLM ici, à l'intérieur de la coroutine.
+        # Cela garantit qu'il est créé dans la même boucle d'événements que celle où il est utilisé.
+        llm = ChatGoogleGenerativeAI(
+            model="gemini-2.5-flash-lite", # Utilisons le modèle le plus récent et efficace
+            google_api_key=settings.GOOGLE_API_KEY,
+            temperature=0.1,
+            convert_system_message_to_human=True,
+            transport="rest"
+        )
+        # Le Parser force Gemini à répondre en JSON strict compatible avec notre Schema
+        parser = PydanticOutputParser(pydantic_object=OptimizedSchedule)
+
         # LE PROMPT (L'instruction magique)
         template = """
         Tu es un assistant expert (ton nom est KAIROS) en gestion du temps (Time Management).
@@ -79,11 +80,11 @@ class AIOptimizer:
         prompt = PromptTemplate(
             template=template,
             input_variables=["now", "events", "tasks", "timezone"],
-            partial_variables={"format_instructions": self.parser.get_format_instructions()}
+            partial_variables={"format_instructions": parser.get_format_instructions()}
         )
 
         # Création de la chaîne
-        chain = prompt | self.llm | self.parser
+        chain = prompt | llm | parser
 
         # Exécution
         print("🧠 IA : Préparation des données...")
