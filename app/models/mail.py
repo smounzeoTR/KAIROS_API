@@ -1,6 +1,6 @@
 from typing import Optional
 from sqlmodel import Field, SQLModel
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 class EmailTaskStatus(str, Enum):
@@ -28,4 +28,4 @@ class EmailTask(SQLModel, table=True):
 
     # État du traitement
     status: EmailTaskStatus = Field(default=EmailTaskStatus.PENDING)
-    received_at: datetime = Field(default_factory=datetime.now(datetime.timezone.utc))
+    received_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

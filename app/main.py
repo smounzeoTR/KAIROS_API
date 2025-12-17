@@ -9,12 +9,12 @@ from app.db.session import engine
 
 # IMPORTANT : On doit importer les modèles ici pour que SQLModel les "voie"
 # et puisse créer les tables au démarrage.
-from app.models.user import User 
-
-from app.api.v1.endpoints import auth
+from app.models.user import User
 from app.models.oauth import OAuthCredential
-from app.api.v1.endpoints import calendar
-from app.api.v1.endpoints import optimizer
+from app.models.mail import EmailTask 
+
+# --- Routeurs ---
+from app.api.v1.endpoints import auth, calendar, optimizer, mail
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -53,7 +53,8 @@ app.add_middleware(
 # Inclusion des routes
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(calendar.router, prefix="/api/v1/calendar", tags=["Calendar"])
-app.include_router(optimizer.router, prefix="/api/v1/ai", tags=["AI Optimization"]) 
+app.include_router(optimizer.router, prefix="/api/v1/ai", tags=["AI Optimization"])
+app.include_router(mail.router, prefix="/api/v1/mail", tags=["Email"])
 @app.get("/")
 def read_root():
     return {"status": "online", "message": "Kairos API is running with DB connection 🚀"}
