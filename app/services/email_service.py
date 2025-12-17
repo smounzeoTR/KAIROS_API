@@ -28,7 +28,7 @@ class EmailService:
         TODO V2: Récupérer depuis la DB (models/oauth.py) pour l'utilisateur connecté.
         Pour l'instant: Utilise le fichier local token.json.
         """
-        token_path = "token.json" 
+        token_path = "/app/token.json" 
         if os.path.exists(token_path):
             return Credentials.from_authorized_user_file(token_path, ["https://www.googleapis.com/auth/gmail.readonly"])
         return None
